@@ -25,6 +25,7 @@ resource "aws_s3_bucket_versioning" "this" {
 resource "aws_instance" "this" {
   ami           = data.aws_ami.ubuntu.id
   instance_type = "t2.micro"
+  subnet_id                   = data.aws_subnet.this.id
   tags = {
     Name = "test-${var.environment}-${var.aws_account_id}-instance"
   }
