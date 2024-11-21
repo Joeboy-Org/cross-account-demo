@@ -1,0 +1,88 @@
+name: Terraform Deployment
+
+on:
+  workflow_call:
+    inputs:
+      ENVIRONMENT:
+        required: true
+        type: string
+      AWS_DEFAULT_REGION:
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency: tf_${{ inputs.ENVIRONMENT }}
+
+jobs:
+    tf_plan:
+        name: Terraform Plan
+        runs-on: ubuntu-latest
+        environment: ${{ inputs.ENVIRONMENT }}
+        steps:
+          - name: Repo Checkout
+            uses: actions/checkout@v4
+    
+          - name: Configure AWS Credentials
+            uses: aws-actions/configure-aws-credentials@v4
+            with:
+             aws-region: ${{ inputs.AWS_DEFAULT_REGION }}
+             role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+
+          - name: 'Who am i'
+            shell: bash
+            run: |
+             terraform -version
+             aws sts get-caller-identity
+
+          - name: Terraform Plan 
+            id: plan
+            uses: Joeboy-Org/github-action-terraform-plan@v1.0.1
+            with:
+               tfArgs: '-var-file=environments/${{ inputs.ENVIRONMENT }}/${{ inputs.ENVIRONMENT }}.tfvars -lock=false'
+               gitUser: ${{ secrets.ACTIONS_SAAS_SA_USER }}
+               gitToken: ${{ secrets.ACTIONS_SAAS_SA_TKN }}
+               tfWorkspace: cross-account-demo-${{ inputs.ENVIRONMENT }}
+               tfDir: "."
+
+    tf_approval:
+        name: Manual Approval - ${{ inputs.ENVIRONMENT }}
+        needs: [tf_plan]
+        runs-on: ubuntu-latest
+        environment: ${{ inputs.ENVIRONMENT }}
+        steps:
+            - name: Invoke ${{ inputs.ENVIRONMENT }} Deployment
+              run: echo "Invoke ${{ inputs.ENVIRONMENT }} Deployment"
+
+    tf_apply:
+        name: Terraform Apply - ${{ inputs.ENVIRONMENT }}
+        runs-on: ubuntu-latest
+        environment: ${{ inputs.ENVIRONMENT }}
+        needs: [tf_approval]
+        steps:
+            - name: Repo Checkout
+              uses: actions/checkout@v4
+    
+            - name: Configure AWS Credentials
+              uses: aws-actions/configure-aws-credentials@v4
+              with:
+                aws-region: ${{ inputs.AWS_DEFAULT_REGION }}
+                role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+
+            - name: 'Who am i'
+              shell: bash
+              run: |
+                terraform -version
+                aws sts get-caller-identity
+
+            - name: Terraform Apply 
+              id: apply
+              uses: Joeboy-Org/github-action-terraform-apply@v1.0.0
+              with:
+                tfArgs: '-var-file=environments/${{ inputs.ENVIRONMENT }}/${{ inputs.ENVIRONMENT }}.tfvars -lock=false'
+                gitUser: ${{ secrets.ACTIONS_SAAS_SA_USER }}
+                gitToken: ${{ secrets.ACTIONS_SAAS_SA_TKN }}
+                tfWorkspace: cross-account-demo-${{ inputs.ENVIRONMENT }}
+                tfDir: "."           

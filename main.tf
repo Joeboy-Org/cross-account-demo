@@ -1,7 +1,8 @@
 resource "aws_s3_bucket" "this" {
-  bucket = "test-${var.environment}-${data.aws_caller_identity.current.account_id}-bucket"
+  bucket = "test-${var.environment}-${var.aws_account_id}-bucket"
 }
 
+# Access block
 resource "aws_s3_bucket_public_access_block" "this" {
   bucket = aws_s3_bucket.this.id
 
@@ -25,6 +26,6 @@ resource "aws_instance" "this" {
   ami           = data.aws_ami.ubuntu.id
   instance_type = "t2.micro"
   tags = {
-    Name = "test-${var.environment}-${data.aws_caller_identity.current.account_id}-instance"
+    Name = "test-${var.environment}-${var.aws_account_id}-instance"
   }
 }

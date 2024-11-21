@@ -1,0 +1,23 @@
+name: 'Resource Deployment'
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  networking:
+    name: Terraform Deployment
+    uses: ./.github/workflows/tf-apply.yml
+    secrets: inherit
+    with:
+      ENVIRONMENT: networking
+      AWS_DEFAULT_REGION: ap-southeast-2
+
+  application:
+    name: Terraform Deployment
+    uses: ./.github/workflows/tf-apply.yml
+    secrets: inherit
+    with:
+      ENVIRONMENT: networking
+      AWS_DEFAULT_REGION: ap-southeast-2
