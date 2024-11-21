@@ -51,7 +51,7 @@ jobs:
         name: Manual Approval - ${{ inputs.ENVIRONMENT }}
         needs: [tf_plan]
         runs-on: ubuntu-latest
-        environment: ${{ inputs.ENVIRONMENT }}
+        environment: ${{ inputs.ENVIRONMENT }}-approval-group
         steps:
             - name: Invoke ${{ inputs.ENVIRONMENT }} Deployment
               run: echo "Invoke ${{ inputs.ENVIRONMENT }} Deployment"
