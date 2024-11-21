@@ -1,0 +1,122 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Create Terraform bootstrap resources
+Parameters:
+  S3BucketName:
+    Type: String
+    Description: Name of the terraform statefile S3 Bucket
+  DynamoDbTableName:
+    Type: String
+    Description: Name of the DynamoDbTable
+  RoleName:
+    Type: String
+    Description: Name of the IAM assume role for github actions to run terraform commands
+  PolicyName:
+    Type: String
+    Description: Name of Customer managed IAM Policy for the terraform permissions
+  Application:
+    Type: String
+    Description: "Name of project"
+
+Resources:
+
+  TerraformStateS3Bucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: !Ref S3BucketName
+      Tags:
+        -
+          Key: application
+          Value: !Ref Application
+  
+  TerraformDynamoDbTable:
+    Type: "AWS::DynamoDB::Table"
+    Properties:
+      TableName: !Ref DynamoDbTableName
+      AttributeDefinitions:
+        -
+          AttributeName: "LockID"
+          AttributeType: "S"
+      KeySchema:
+        -
+          AttributeName: "LockID"
+          KeyType: "HASH"
+      ProvisionedThroughput:
+        ReadCapacityUnits: "1"
+        WriteCapacityUnits: "1"
+      Tags:
+        -
+          Key: application
+          Value: !Ref Application
+
+  GithubOIDCProvider:
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      ClientIdList:
+        - "sts.amazonaws.com"
+      ThumbprintList:
+        - "74f3a68f16524f15424927704c9506f55a9316bd"
+      Url: "https://token.actions.githubusercontent.com"
+      Tags:
+        - 
+          Key: application
+          Value: !Ref Application
+
+  GithubActionsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref RoleName
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Federated: !GetAtt GithubOIDCProvider.Arn
+            Action: "sts:AssumeRoleWithWebIdentity"
+            Condition:
+              StringEquals:
+                "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+              StringLike:
+                "token.actions.githubusercontent.com:sub": "repo:Versent/internal-support-dns:*"
+
+      Policies:
+          - PolicyName: !Ref PolicyName
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Sid: "s3StatefileObjectManagement"
+                  Effect: "Allow"
+                  Action:
+                    - "s3:GetObject"
+                    - "s3:PutObject"
+                  Resource:
+                    - !Join [ '', [ !GetAtt TerraformStateS3Bucket.Arn, '/*' ] ]
+                - Sid: "s3StatefileBucketManagement"
+                  Effect: "Allow"
+                  Action:
+                    - "s3:ListBucket"
+                    - "s3:GetBucketLocation"
+                  Resource: !GetAtt TerraformStateS3Bucket.Arn
+                - Sid: "dynamoDbLockKeyManagement"
+                  Effect: "Allow"
+                  Action:
+                    - "dynamodb:PutItem"
+                    - "dynamodb:GetItem"
+                  Resource: !GetAtt TerraformDynamoDbTable.Arn
+                - Sid: "githubActionsTerraformPermission"
+                  Effect: "Allow"
+                  Action:
+                    - "route53:ListTagsForResource"
+                    - "route53:ListTagsForResources"
+                    - "route53:CreateHostedZone"
+                    - "route53:ChangeTagsForResource"
+                    - "route53:ListResourceRecordSets"
+                    - "route53:DeleteHostedZone"
+                    - "route53:ListHostedZonesByName"
+                    - "route53:GetHostedZone"
+                    - "route53:ChangeResourceRecordSets"
+                    - "route53:GetChange"
+                    - "route53:AssociateVPCWithHostedZone"
+                    - "route53:UpdateHostedZoneComment"
+                    - "ec2:DescribeVpcs"
+                  Resource: "*"
+              
