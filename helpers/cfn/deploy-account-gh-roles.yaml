@@ -1,0 +1,31 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Create Terraform bootstrap resources
+Parameters:
+  RoleName:
+    Type: String
+    Description: Name of the IAM assume role for github actions to run terraform commands
+    Default: GithubActionsRole
+  pMgmtAccountID:
+    Type: String
+    Description: Account ID of the Management Account
+  pMgmtGHRoleName:
+    Type: String
+    Description: This is the management github actions role
+    Default: GithubActionsRole
+
+Resources:
+    GithubActionsRole:
+        Type: AWS::IAM::Role
+        Properties:
+          RoleName: !Ref RoleName
+          AssumeRolePolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Principal:
+                  AWS: !Sub "arn:${AWS::Partition}:iam::${pMgmtAccountID}:role/${pMgmtGHRoleName}"          
+                Action: sts:AssumeRole
+          Path: /
+          ManagedPolicyArns:
+            - !Sub "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+            - !Sub "arn:aws:iam::aws:policy/AmazonEC2FullAccess"

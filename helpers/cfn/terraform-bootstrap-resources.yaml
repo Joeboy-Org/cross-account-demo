@@ -4,18 +4,23 @@ Parameters:
   S3BucketName:
     Type: String
     Description: Name of the terraform statefile S3 Bucket
+    Default: cross-account-mgmt-bucket
   DynamoDbTableName:
     Type: String
     Description: Name of the DynamoDbTable
+    Default: cross-account-mgmt-table
   RoleName:
     Type: String
     Description: Name of the IAM assume role for github actions to run terraform commands
+    Default: GithubActionsRole
   PolicyName:
     Type: String
     Description: Name of Customer managed IAM Policy for the terraform permissions
+    Default: GithubActionsPolicy
   Application:
     Type: String
     Description: "Name of project"
+    Default: CrossAccountDemo
 
 Resources:
 
@@ -76,7 +81,7 @@ Resources:
               StringEquals:
                 "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
               StringLike:
-                "token.actions.githubusercontent.com:sub": "repo:Versent/internal-support-dns:*"
+                "token.actions.githubusercontent.com:sub": "repo:Joeboy-Org/cross-account-demo:*"
 
       Policies:
           - PolicyName: !Ref PolicyName
@@ -102,21 +107,11 @@ Resources:
                     - "dynamodb:PutItem"
                     - "dynamodb:GetItem"
                   Resource: !GetAtt TerraformDynamoDbTable.Arn
-                - Sid: "githubActionsTerraformPermission"
+                - Sid: "githubActionsAssumeRole"
                   Effect: "Allow"
                   Action:
-                    - "route53:ListTagsForResource"
-                    - "route53:ListTagsForResources"
-                    - "route53:CreateHostedZone"
-                    - "route53:ChangeTagsForResource"
-                    - "route53:ListResourceRecordSets"
-                    - "route53:DeleteHostedZone"
-                    - "route53:ListHostedZonesByName"
-                    - "route53:GetHostedZone"
-                    - "route53:ChangeResourceRecordSets"
-                    - "route53:GetChange"
-                    - "route53:AssociateVPCWithHostedZone"
-                    - "route53:UpdateHostedZoneComment"
-                    - "ec2:DescribeVpcs"
-                  Resource: "*"
+                    - "sts:AssumeRole"
+                    - "sts:AssumeRoleWithSAML"
+                    - "sts:TagSession"
+                  Resource: "arn:aws:iam::*:role/GithubActionsRole"
               
