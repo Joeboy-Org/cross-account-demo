@@ -4,7 +4,9 @@ on:
     branches:
       - main
   workflow_dispatch:
-
+permissions:
+    id-token: write
+    contents: read
 jobs:
   networking:
     name: Terraform Deployment
